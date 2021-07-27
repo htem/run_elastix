@@ -8,7 +8,8 @@ This code was originally published [here](https://github.com/htem/GridTape_VNC_p
 ## Usage Manual
 
 ### Step 0: Prerequisites
-**A.** [Download elastix](https://elastix.lumc.nl/download.php) and add its bin/ folder to your PATH so that `elastix` and `transformix` can be called from the command line.
+**A.** Download [elastix](https://elastix.lumc.nl/download.php) from its [releases page](https://github.com/SuperElastix/elastix/releases). The following screenshot from the elastix5.0.1 manual describes the last steps you need to take to finish installing elastix: ![image](https://user-images.githubusercontent.com/23616964/127232869-63950725-e363-441d-af92-39125cdec53f.png)
+
 
 **B.** Make sure this folder is on your PATH so that `run_elastix` and `invert_elastix` can be called from the command line.
 
