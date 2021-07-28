@@ -12,7 +12,7 @@ This code was originally published [here](https://github.com/htem/GridTape_VNC_p
 
 **B.** Open the file `run_elastix_settings` in this folder and change the line starting with `elastix_installation_location=` to be wherever you put the extracted folder from step A. (The default value is `~/software`, so consider putting your elastix folder on your computer at that location.)
 
-**C.** Add this folder to your PATH so that `run_elastix` and `invert_elastix` can be called from the command line. For example, add `export ~/repos/run_elastix:$PATH` (or wherever on your computer you have your `run_elastix` files) to your `~/.bashrc`/`~/.bash_profile`/`~/.zshrc`.
+**C.** Add this folder to your PATH so that `run_elastix` and `invert_elastix` can be called from the command line. For example, add `export PATH=~/repos/run_elastix:$PATH` (or wherever on your computer you have your `run_elastix` files) to your `~/.bashrc` (bash on Linux) or `~/.bash_profile` (bash on Mac) or `~/.zshrc` (zsh on Mac).
 
 **D.** Download the standard template you want to align to. The most recent Drosophila brain and VNC standard templates are available from [Janelia](https://www.janelia.org/open-science/jrc-2018-brain-templates).
 
