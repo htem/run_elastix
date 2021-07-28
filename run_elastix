@@ -68,6 +68,19 @@ if ! which realpath &> /dev/null; then
     }
 fi
 
+# Check whether the GNU sed or BSD/MacOS sed is installed and use
+# the form of the -i argument required by the detected version
+# Information from https://stackoverflow.com/a/44864004
+# Implementation from https://stackoverflow.com/a/9323261
+if sed --version &> /dev/null; then
+    dashi=(-i)  # GNU sed
+else
+    dashi=(-i "")  # BSD/MacOS sed
+fi
+
+
+
+
 #DEFAULTS FOR ARGUMENT-MODIFIABLE VARIABLES GO HERE
 verbose=false
 fake=false
@@ -298,11 +311,11 @@ if $run_affine; then
     fi
     cp ${SCRIPT_DIR}/elastixParams_Affine.txt $elastixParams_affine
     if $suppress_image_writing; then
-        sed -i 's/(WriteResultImage "true")/(WriteResultImage "false")/' $elastixParams_affine
+        sed "${dashi[@]}" 's/(WriteResultImage "true")/(WriteResultImage "false")/' $elastixParams_affine
     fi
     if [ -n "$points" -a -n "$template_points" ]; then
-        sed -i 's/(Metric "AdvancedNormalizedCorrelation")/(Metric "AdvancedNormalizedCorrelation" "CorrespondingPointsEuclideanDistanceMetric")\r\n(Metric0Weight 1)\r\n(Metric1Weight 0.01)/' $elastixParams_affine
-        sed -i 's/\/\/(Metric1Use/(Metric1Use/' $elastixParams_affine
+        sed "${dashi[@]}" 's/(Metric "AdvancedNormalizedCorrelation")/(Metric "AdvancedNormalizedCorrelation" "CorrespondingPointsEuclideanDistanceMetric")\r\n(Metric0Weight 1)\r\n(Metric1Weight 0.01)/' $elastixParams_affine
+        sed "${dashi[@]}" 's/\/\/(Metric1Use/(Metric1Use/' $elastixParams_affine
         cp "$points" "$template_points" "$output/elastix_affine/"
     fi
     $chmod -w $elastixParams_affine
@@ -334,7 +347,7 @@ if $run_Bspline; then
         exit 1
     fi
 
-    if [ ! -e "$affine_transformation_parameters" ]; then
+    if ! $fake && [ ! -e "$affine_transformation_parameters" ]; then
         show_help
         >&2 echo "ERROR: Affine transformation parameters must exist at $affine_transformation_parameters before running Bspline alignment."
         $exit 1
@@ -353,17 +366,17 @@ if $run_Bspline; then
                 case $input in [yY]) echo "Overwriting"; chmod +w $elastixParams_Bspline ;; *) echo "Exiting"; exit 1 ;; esac
             fi
             cp ${SCRIPT_DIR}/elastixParams_Bspline.txt $elastixParams_Bspline
-            sed -i "s/(FinalGridSpacingInPhysicalUnits _GRIDSPACING_)/(FinalGridSpacingInPhysicalUnits $spacing)/" $elastixParams_Bspline
+            sed "${dashi[@]}" "s/(FinalGridSpacingInPhysicalUnits _GRIDSPACING_)/(FinalGridSpacingInPhysicalUnits $spacing)/" $elastixParams_Bspline
             if $suppress_image_writing; then
-                sed -i 's/(WriteResultImage "true")/(WriteResultImage "false")/' $elastixParams_Bspline
+                sed "${dashi[@]}" 's/(WriteResultImage "true")/(WriteResultImage "false")/' $elastixParams_Bspline
             fi
             if [ -n "$points" -a -n "$template_points" ]; then
-                sed -i 's/(Metric "AdvancedNormalizedCorrelation" "TransformBendingEnergyPenalty")/(Metric "AdvancedNormalizedCorrelation" "TransformBendingEnergyPenalty" "CorrespondingPointsEuclideanDistanceMetric")/' $elastixParams_Bspline
-                sed -i 's/\/\/(Metric2Weight/(Metric2Weight/' $elastixParams_Bspline
-                sed -i 's/\/\/(Metric2Use/(Metric2Use/' $elastixParams_Bspline
+                sed "${dashi[@]}" 's/(Metric "AdvancedNormalizedCorrelation" "TransformBendingEnergyPenalty")/(Metric "AdvancedNormalizedCorrelation" "TransformBendingEnergyPenalty" "CorrespondingPointsEuclideanDistanceMetric")/' $elastixParams_Bspline
+                sed "${dashi[@]}" 's/\/\/(Metric2Weight/(Metric2Weight/' $elastixParams_Bspline
+                sed "${dashi[@]}" 's/\/\/(Metric2Use/(Metric2Use/' $elastixParams_Bspline
                 cp "$points" "$template_points" "$this_run_output/"
             fi
-            sed -i "s/(Metric1Weight _METRIC1WEIGHT_)/(Metric1Weight $bending_weight)/" $elastixParams_Bspline
+            sed "${dashi[@]}" "s/(Metric1Weight _METRIC1WEIGHT_)/(Metric1Weight $bending_weight)/" $elastixParams_Bspline
             $chmod -w $elastixParams_Bspline
 
             echo "elastix with BSPLINE TRANSFORM saving to $this_run_output"
@@ -377,7 +390,7 @@ if $run_Bspline; then
                 -threads $n_cores \
                 -p "$elastixParams_Bspline"
 
-            $ln -s ${spacing}spacing_${bending_weight}bendingweight${output_suffix}/result.0.nrrd $output/elastix_Bspline/result.${spacing}spacing_${bending_weight}bendingweight${output_suffix}.nrrd
+            $ln -s ${spacing}spacing_${bending_weight}bendingweight${output_suffix}/result.0.nrrd $output/elastix_Bspline/result.${spacing}spacing_${bending_weight}bendingweight${output_suffix}.nrrd 2> /dev/null
             echo
         done
     done
