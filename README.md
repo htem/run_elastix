@@ -3,6 +3,8 @@ Intended use is registering neuroimaging data from one individual to a standard 
 
 This code was originally published [here](https://github.com/htem/GridTape_VNC_paper/tree/main/template_registration_pipeline/run_elastix) as part of [Phelps, Hildebrand, Graham et al. 2021](https://www.lee.hms.harvard.edu/phelps-hildebrand-graham-et-al-2021). Continued development of this code will continue here, not in the paper's repository.
 
+Currently runs on Linux (tested on Ubuntu) and Mac (tested on Big Sur).
+
 ---
 
 ## Usage Manual
