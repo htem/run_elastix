@@ -61,6 +61,12 @@ if [ "$1" == "manual" ]; then
     exit 1
 fi
 
+# For compatibility with systems where realpath is not installed
+if ! which realpath &> /dev/null; then
+    realpath() {
+        echo "$(cd "$(dirname "$1")" && pwd -P)/$(basename "$1")"
+    }
+fi
 
 #DEFAULTS FOR ARGUMENT-MODIFIABLE VARIABLES GO HERE
 verbose=false
