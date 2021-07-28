@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# Settings for run_elastix
+
+
+# When you downloaded elastix from https://github.com/SuperElastix/elastix/releases
+# and extracted the contents, where on your computer did you put the extracted folder?
+# For example, if you put the folder at ~/software/elastix-5.0.1-linux, then set this 
+# variable to be ~/software
+elastix_installation_location=~/software
+
+
+# What is the filename of the template you want to register images to?
+# If the file is in this run_elastix folder, just provide its filename.
+# If the file is elsewhere on your computer, provide the full path.
+template=JRC2018_VNC_FEMALE_4iso.nrrd
+
+
+# How many cores do you want to allow elastix to use?
+# A reasonable number to use here is the number of cores that your computer has minus 1 or minus 2.
+# On Linux, you can find the number of cores on your computer by running: nproc
+# On Mac, you can find the number of cores on your computer by running: sysctl -n hw.ncpu
+# On Windows, you can find the number of cores on your computer by looking at the Performance tab of the Task Manager
+number_of_cores_to_use=7  # A reasonable default for an 8-core computer

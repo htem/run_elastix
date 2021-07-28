@@ -2,10 +2,23 @@
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+# Configure paths and default parameters
+source run_elastix_settings
+elastix_folder=$(ls $elastix_installation_location/elastix-*/bin/elastix)
+if [ -z "$elastix_folder" ]; then
+    >&2 echo "elastix could not be found in $elastix_installation_location"
+    >&2 echo "Make sure you have downloaded elastix and then edited ${SCRIPT_DIR}/run_elastix_settings to specify where you put the elastix files"
+    exit 1
+fi
+elastix_folder=${elastix_folder%/bin/elastix}
+export PATH=$elastix_folder/bin:$PATH
+export LD_LIBRARY_PATH=$elastix_folder/lib
+
+
 show_help () {
-    >&2 echo "Usage: run_elastix image_to_align.nrrd [-m mask] [-t template] [-tm template_mask] [-p points] [-tp template_points] [-s spacings] [-w bending_weights] [-r] [-a] [-at0 initial_transform] [-b] [-o output_suffix] [-n n_threads] [-v] [-f] [-x] [-y]"
+    >&2 echo "Usage: run_elastix image_to_align.nrrd [-m mask] [-t template] [-tm template_mask] [-p points] [-tp template_points] [-s spacings] [-w bending_weights] [-r] [-a] [-at0 initial_transform] [-b] [-o output_suffix] [-n n_cores] [-v] [-f] [-x] [-y]"
     >&2 echo "    -m mask             Path to mask file specifying which part of the image to consider. Default no mask."
-    >&2 echo "    -t template         Path to image template used for alignment. Default {this script's directory}/JRC2018_VNC_FEMALE_4iso.nrrd"
+    >&2 echo "    -t template         Path to image template used for alignment. Default $template (specified in run_elastix_settings)."
     >&2 echo "    -tm mask            Path to mask file specifying which part of the template to consider. Default no mask." 
     >&2 echo ""
     >&2 echo "    -p                  Path to text file containing a list of points in the image. Must be used with -tp."
@@ -27,7 +40,7 @@ show_help () {
     >&2 echo "    -b                  (Bspline) Only run Bspline alignment. Affine must have previously been run."
     >&2 echo ""
     >&2 echo "    -o output_suffix    Append suffix to Output folder name. Default is no suffix. Use if you're testing some settings."
-    >&2 echo "    -n n_threads        Allow elastix to use n_threads on your processor. Default 30."
+    >&2 echo "    -n n_cores          Allow elastix to use this many CPU cores. Default $number_of_cores_to_use (specified in run_elastix_settings)."
     >&2 echo "    -v                  (Verbose) Increase output detail. Currently not implemented."
     >&2 echo "    -f                  (Fake) Don't run, instead print what commands would be run."
     >&2 echo "    -x                  (X) Do not generate a final image, instead only generate the transformation file."
@@ -53,14 +66,13 @@ fi
 verbose=false
 fake=false
 mask=""
-template=${SCRIPT_DIR}/JRC2018_VNC_FEMALE_4iso.nrrd
 template_mask="" #"../mask_T1_neuromeres.nrrd"
 points=""
 template_points=""
 spacings="12"
 bending_weights="100"
 output_suffix=""
-n_threads="30"
+n_cores=$number_of_cores_to_use
 affine_initial_transform=""
 
 moving_template=false
@@ -106,7 +118,7 @@ while [ "$#" -gt 0 ]; do
             shift; shift
         ;;
         -n)
-            n_threads="$2"
+            n_cores="$2"
             shift; shift
         ;;
         -v)
@@ -180,9 +192,14 @@ fi
 
 #ARGUMENT VALIDATION
 if [ ! -f "$template" ]; then
-    show_help
-    echo "The template file argument (-t) does not point to an existing file: $template"
-    exit 1
+    if [ -f "${SCRIPT_DIR}/$template" ]; then
+        template="${SCRIPT_DIR}/$template"
+    else
+        show_help
+        >&2 echo "The filename provided for the template was \"$template\" but that file does not exist."
+        >&2 echo "Specify the template's filename using the \"-t\" argument to run_elastix or put it into ${SCRIPT_DIR}/run_elastix_settings"
+        exit 1
+    fi
 fi
 if [ ! -f "$1" ]; then
     show_help
@@ -291,7 +308,7 @@ if $run_affine; then
         $template_mask_argument \
         $points_argument \
         -out $output/elastix_affine \
-        -threads $n_threads \
+        -threads $n_cores \
         -p $elastixParams_affine \
         $affine_initial_transform
     echo
@@ -351,7 +368,7 @@ if $run_Bspline; then
                 $points_argument \
                 -out $this_run_output \
                 -t0 "$affine_transformation_parameters" \
-                -threads $n_threads \
+                -threads $n_cores \
                 -p "$elastixParams_Bspline"
 
             $ln -s ${spacing}spacing_${bending_weight}bendingweight${output_suffix}/result.0.nrrd $output/elastix_Bspline/result.${spacing}spacing_${bending_weight}bendingweight${output_suffix}.nrrd

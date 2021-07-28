@@ -8,16 +8,17 @@ This code was originally published [here](https://github.com/htem/GridTape_VNC_p
 ## Usage Manual
 
 ### Step 0: Prerequisites
-**A.** Download [elastix](https://elastix.lumc.nl/download.php) from its [releases page](https://github.com/SuperElastix/elastix/releases). The following screenshot from the elastix5.0.1 manual describes the last steps you need to take to finish installing elastix: ![image](https://user-images.githubusercontent.com/23616964/127232869-63950725-e363-441d-af92-39125cdec53f.png)
+**A.** Download [elastix](https://elastix.lumc.nl/download.php) from its [releases page](https://github.com/SuperElastix/elastix/releases). Extract the folder from the .zip or .tar.gz file and put that folder somewhere on your computer.
 
+**B.** Open the file `run_elastix_settings` in this folder and change the line starting with `elastix_installation_location=` to be wherever you put the extracted folder from step A. (The default value is `~/software`, so consider putting your elastix folder on your computer at that location.)
 
-**B.** Make sure this folder is on your PATH so that `run_elastix` and `invert_elastix` can be called from the command line.
+**C.** Add this folder to your PATH so that `run_elastix` and `invert_elastix` can be called from the command line. For example, add `export ~/repos/run_elastix:$PATH` (or wherever on your computer you have your `run_elastix` files) to your `~/.bashrc`/`~/.bash_profile`/`~/.zshrc`.
 
-**C.** Download the standard template you want to align to. The most recent Drosophila brain and VNC standard templates are available from [Janelia](https://www.janelia.org/open-science/jrc-2018-brain-templates)
+**D.** Download the standard template you want to align to. The most recent Drosophila brain and VNC standard templates are available from [Janelia](https://www.janelia.org/open-science/jrc-2018-brain-templates).
 
-**D.** Open `run_elastix` and change the line starting with `template=` to point to your template file. By default, `run_elastix` tries to look for a file named `JRC2018_VNC_FEMALE_4iso.nrrd` (the standard template of the female VNC) in the same folder as the script is in (so, this folder).
+**E.** Open the file `run_elastix_settings` in this folder and change the line starting with `template=` to be the filename of the template you want to use. (The default value is `JRC2018_VNC_FEMALE_4iso.nrrd`, the 2018 Janelia Female VNC template.) Either put the `.nrrd` file in the same folder as `run_elastix`, or put the full path to where your `.nrrd` file is into the settings file.
 
-**E.** If your computer has less than 32 cores, open `run_elastix` and change the line `n_threads=30` be some number equal to or slightly less than the number of cores on your computer.
+**F.** Edit the final line in `run_elastix_settings` to tell elastix how many of your computer's CPU cores it can use by default.
 
 
 ### Step 1: Prepare input files
