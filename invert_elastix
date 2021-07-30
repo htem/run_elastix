@@ -31,6 +31,12 @@ if [ ! -f ${SCRIPT_DIR}/elastixParams_InvertBspline.txt ]; then
     exit 1
 fi
 
+# For compatibility with systems where realpath is not installed
+if ! which realpath &> /dev/null; then
+    realpath() {
+        echo "$(cd "$(dirname "$1")" && pwd -P)/$(basename "$1")"
+    }
+fi
 
 # Check whether the GNU sed or BSD/MacOS sed is installed and use
 # the form of the -i argument required by the detected version
