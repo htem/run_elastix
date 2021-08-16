@@ -2,17 +2,59 @@
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# Configure paths and default parameters
-source run_elastix_settings
-elastix_folder=$(ls $elastix_installation_location/elastix-*/bin/elastix)
-if [ -z "$elastix_folder" ]; then
-    >&2 echo "elastix could not be found in $elastix_installation_location"
-    >&2 echo "Make sure you have downloaded elastix and then edited ${SCRIPT_DIR}/run_elastix_settings to specify where you put the elastix files"
-    exit 1
+# For compatibility with systems where realpath is not installed, e.g. MacOS.
+if ! which realpath &> /dev/null; then
+    realpath() {
+        path="$1"
+        # First, if the file is a symlink, recursively resolve it
+        while [ -L "$path" ]; do
+            link_path=$(readlink $path)
+            case ${link_path:0:1} in
+                "/") path="$link_path" ;;
+                "~") path="$link_path" ;;
+                *) path="$(dirname "$path")/$link_path"
+            esac
+        done
+        # Then resolve folder symlinks and ".." and other junk in the full path
+        echo "$(cd "$(dirname "$path")" && pwd -P)/$(basename "$1")"
+    }
 fi
-elastix_folder=${elastix_folder%/bin/elastix}
-export PATH=$elastix_folder/bin:$PATH
-export LD_LIBRARY_PATH=$elastix_folder/lib
+
+# Load run_elastix settings
+source run_elastix_settings
+
+# Configure elastix path
+if which elastix > /dev/null; then
+    elastix_path=$(which elastix)
+    echo "Using elastix found on the PATH: $elastix_path"
+else
+    elastix_path=$(ls $elastix_installation_location/elastix*/bin/elastix)
+    n_elastix_found=$(ls $elastix_installation_location/elastix*/bin/elastix | wc -l)
+    if [ "$n_elastix_found" -eq 0 ]; then
+        >&2 echo "elastix could not be found at $elastix_installation_location/elastix*/bin/elastix"
+        >&2 echo "Make sure you have downloaded elastix and then edited ${SCRIPT_DIR}/run_elastix_settings to specify where you put the elastix files"
+        >&2 echo "See README.md for more details"
+        exit 1
+    elif [ "$n_elastix_found" -gt 1 ]; then
+        >&2 echo "$n_elastix_found elastix executables found in $elastix_installation_location:"
+        >&2 echo $elastix_path
+        elastix_path=$(ls -t $elastix_installation_location/elastix*/bin/elastix | head -n 1)
+        >&2 echo "Using the version with the most recent timestamp: $elastix_path"
+    else
+        >&2 echo "Using elastix found at: $elastix_path"
+    fi
+    # Add the folder containing elastix to the path
+    export PATH=$(dirname "$elastix_path"):$PATH
+fi
+
+# Due to MacOS System Integrity Protection purging LD_* environment variables,
+# we set it explicitly here so that elastix can find is library file
+# libANNlib-5.0. Doing this also makes sure elastix will work on other OSes
+# even if the user hasn't set their LD_LIBRARY_PATH to point to the folder
+# containing elastix's libANNlib-5.0 
+elastix_path=$(realpath $elastix_path)
+# Allow elastix to search for libANNlib-5.0 in the elastix folder and in ../lib
+export LD_LIBRARY_PATH=$(dirname "$elastix_path"):$(dirname "$(dirname "$elastix_path")")/lib
 
 
 show_help () {
@@ -29,13 +71,6 @@ if [ ! -f ${SCRIPT_DIR}/elastixParams_InvertBspline.txt ]; then
     show_help
     >&2 echo "ERROR: elastixParams_InvertBspline.txt must exist in ${SCRIPT_DIR}"
     exit 1
-fi
-
-# For compatibility with systems where realpath is not installed
-if ! which realpath &> /dev/null; then
-    realpath() {
-        echo "$(cd "$(dirname "$1")" && pwd -P)/$(basename "$1")"
-    }
 fi
 
 # Check whether the GNU sed or BSD/MacOS sed is installed and use
