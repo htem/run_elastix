@@ -47,14 +47,14 @@ else
     export PATH=$(dirname "$elastix_path"):$PATH
 fi
 
-# Due to MacOS System Integrity Protection purging LD_* environment variables, we
-# set it explicitly here. Doing this also makes sure elastix will work on other OSes
-# even if the user hasn't set their LD_LIBRARY_PATH to point to the folder containing
-# elastix's libANNlib-5.0.so
+# Due to MacOS System Integrity Protection purging LD_* environment variables,
+# we set it explicitly here so that elastix can find is library file
+# libANNlib-5.0. Doing this also makes sure elastix will work on other OSes
+# even if the user hasn't set their LD_LIBRARY_PATH to point to the folder
+# containing elastix's libANNlib-5.0 
 elastix_path=$(realpath $elastix_path)
-# Allow elastix to search for libANNlib-5.0.so in the elastix folder and in ../lib
+# Allow elastix to search for libANNlib-5.0 in the elastix folder and in ../lib
 export LD_LIBRARY_PATH=$(dirname "$elastix_path"):$(dirname "$(dirname "$elastix_path")")/lib
-echo LD_LIBRARY_PATH=$LD_LIBRARY_PATH
 
 
 show_help () {
