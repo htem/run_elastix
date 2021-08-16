@@ -3,12 +3,14 @@ Intended use is registering neuroimaging data from one individual to a standard 
 
 This code was originally published [here](https://github.com/htem/GridTape_VNC_paper/tree/main/template_registration_pipeline/run_elastix) as part of [Phelps, Hildebrand, Graham et al. 2021](https://www.lee.hms.harvard.edu/phelps-hildebrand-graham-et-al-2021). Continued development of this code will continue here, not in the paper's repository.
 
+Currently runs on Linux (tested on Ubuntu 16.04, 18.04, and 20.04, but see notes below about which version of elastix is compatible with each OS version) and Mac (tested on Big Sur).
+
 ---
 
 ## Usage Manual
 
 ### Step 0: Prerequisites
-**A.** Download [elastix](https://elastix.lumc.nl/download.php) from its [releases page](https://github.com/SuperElastix/elastix/releases). Extract the folder from the .zip or .tar.gz file and put that folder somewhere on your computer.
+**A.** Download [elastix](https://elastix.lumc.nl/download.php) from its [releases page](https://github.com/SuperElastix/elastix/releases). Extract the folder from the .zip or .tar.gz file and put that folder somewhere on your computer. (Ubuntu 16.04: Use elastix-4.9.0. Ubuntu 18.04: Use elastix-5.0.0. Ubuntu 20.04: Use elastix-5.0.1. Mac: Use the most recent version.)
 
 **B.** Open the file `run_elastix_settings` in this folder and change the line starting with `elastix_installation_location=` to be wherever you put the extracted folder from step A. (The default value is `~/software`, so consider putting your elastix folder on your computer at that location.)
 

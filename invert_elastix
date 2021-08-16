@@ -1,10 +1,65 @@
 #!/bin/bash
 
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# For compatibility with systems where realpath is not installed, e.g. MacOS.
+if ! which realpath &> /dev/null; then
+    realpath() {
+        path="$1"
+        # First, if the file is a symlink, recursively resolve it
+        while [ -L "$path" ]; do
+            link_path=$(readlink $path)
+            case ${link_path:0:1} in
+                "/") path="$link_path" ;;
+                "~") path="$link_path" ;;
+                *) path="$(dirname "$path")/$link_path"
+            esac
+        done
+        # Then resolve folder symlinks and ".." and other junk in the full path
+        echo "$(cd "$(dirname "$path")" && pwd -P)/$(basename "$1")"
+    }
+fi
+
+# Load run_elastix settings
+source run_elastix_settings
+
+# Configure elastix path
+if which elastix > /dev/null; then
+    elastix_path=$(which elastix)
+    echo "Using elastix found on the PATH: $elastix_path"
+else
+    elastix_path=$(ls $elastix_installation_location/elastix*/bin/elastix)
+    n_elastix_found=$(ls $elastix_installation_location/elastix*/bin/elastix | wc -l)
+    if [ "$n_elastix_found" -eq 0 ]; then
+        >&2 echo "elastix could not be found at $elastix_installation_location/elastix*/bin/elastix"
+        >&2 echo "Make sure you have downloaded elastix and then edited ${SCRIPT_DIR}/run_elastix_settings to specify where you put the elastix files"
+        >&2 echo "See README.md for more details"
+        exit 1
+    elif [ "$n_elastix_found" -gt 1 ]; then
+        >&2 echo "$n_elastix_found elastix executables found in $elastix_installation_location:"
+        >&2 echo $elastix_path
+        elastix_path=$(ls -t $elastix_installation_location/elastix*/bin/elastix | head -n 1)
+        >&2 echo "Using the version with the most recent timestamp: $elastix_path"
+    else
+        >&2 echo "Using elastix found at: $elastix_path"
+    fi
+    # Add the folder containing elastix to the path
+    export PATH=$(dirname "$elastix_path"):$PATH
+fi
+
+# Due to MacOS System Integrity Protection purging LD_* environment variables,
+# we set it explicitly here so that elastix can find is library file
+# libANNlib-5.0. Doing this also makes sure elastix will work on other OSes
+# even if the user hasn't set their LD_LIBRARY_PATH to point to the folder
+# containing elastix's libANNlib-5.0 
+elastix_path=$(realpath $elastix_path)
+# Allow elastix to search for libANNlib-5.0 in the elastix folder and in ../lib
+export LD_LIBRARY_PATH=$(dirname "$elastix_path"):$(dirname "$(dirname "$elastix_path")")/lib
+
+
 show_help () {
     >&2 echo "Usage: invert_elastix folder_containing_transform_to_invert [-v] [-f] [-o output_suffix] [-n n_threads] [-s spacings] [-w]"
     >&2 echo "Example: ./invert_elastix ../motor_neurons/21G01-LexA/21G01LexA_vnc2_60x_T1_2019_09_19_neuropil_elastix_to_moving_template/elastix_Bspline/4spacing_20bendingweight"
-    >&2 echo "        Description goes here"
-    >&2 echo "        and can continue here"
 }
 
 if [ "$#" -eq 0 ] || [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
@@ -12,12 +67,22 @@ if [ "$#" -eq 0 ] || [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
     exit 1
 fi
 
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 if [ ! -f ${SCRIPT_DIR}/elastixParams_InvertBspline.txt ]; then
     show_help
-    >&2 echo "ERROR: elastixParams_InvertBspline.txt must exist in current directory"
+    >&2 echo "ERROR: elastixParams_InvertBspline.txt must exist in ${SCRIPT_DIR}"
     exit 1
 fi
+
+# Check whether the GNU sed or BSD/MacOS sed is installed and use
+# the form of the -i argument required by the detected version
+# Information from https://stackoverflow.com/a/44864004
+# Implementation from https://stackoverflow.com/a/9323261
+if sed --version &> /dev/null; then
+    dashi=(-i)  # GNU sed
+else
+    dashi=(-i "")  # BSD/MacOS sed
+fi
+
 
 #DEFAULTS FOR ARGUMENT-MODIFIABLE VARIABLES GO HERE
 verbose=false
@@ -167,8 +232,8 @@ for spacing in $spacings; do
         case $input in [yY]) echo "Overwriting"; chmod +w "$elastixParams";; *) echo "Exiting"; exit 1 ;; esac
     fi 
     cp "${SCRIPT_DIR}/elastixParams_InvertBspline.txt" "$elastixParams"
-    sed -i "s/(FinalGridSpacingInPhysicalUnits _GRIDSPACING_)/(FinalGridSpacingInPhysicalUnits $spacing)/" "$elastixParams"
-    if $write_intermediate_output; then sed -i 's/(WriteResultImage "false")/(WriteResultImage "true")/' "$elastixParams"; fi
+    sed "${dashi[@]}" "s/(FinalGridSpacingInPhysicalUnits _GRIDSPACING_)/(FinalGridSpacingInPhysicalUnits $spacing)/" "$elastixParams"
+    if $write_intermediate_output; then sed "${dashi[@]}" 's/(WriteResultImage "false")/(WriteResultImage "true")/' "$elastixParams"; fi
     $chmod -w "$elastixParams"
 
     echo "Inverting $base/TransformParameters.0.txt with GridSpacing $spacing"
@@ -187,7 +252,7 @@ for spacing in $spacings; do
     if [ -f "$output_folder/result.0.nrrd" ]; then $mv "$output_folder/result.0.nrrd" "$output_folder/result.0.composedForwardAndInverseTransforms.nrrd"; fi
 
     $cp "$output_folder/TransformParameters.0.txt" "$output_folder/TransformParameters.1.txt"
-    $sed -i 's/(InitialTransformParametersFileName.*)/(InitialTransformParametersFileName "NoInitialTransform")/' "$output_folder/TransformParameters.1.txt"
+    $sed "${dashi[@]}" 's/(InitialTransformParametersFileName.*)/(InitialTransformParametersFileName "NoInitialTransform")/' "$output_folder/TransformParameters.1.txt"
 
     #Apply the inverted transform to the fixed image
     $transformix -in "$fixed" \
