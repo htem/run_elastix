@@ -1,5 +1,7 @@
 #!/bin/bash
 
+__version__="1.0.0"
+
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # For compatibility with systems where realpath is not installed, e.g. MacOS.
@@ -46,48 +48,64 @@ else
     # Add the folder containing elastix to the path
     export PATH=$(dirname "$elastix_path"):$PATH
 fi
+>&2 echo ""
 
 # Due to MacOS System Integrity Protection purging LD_* environment variables,
 # we set it explicitly here so that elastix can find is library file
-# libANNlib-5.0. Doing this also makes sure elastix will work on other OSes
-# even if the user hasn't set their LD_LIBRARY_PATH to point to the folder
-# containing elastix's libANNlib-5.0 
+# (libANNlib-X.Y.so). Doing this also makes sure elastix will work on other
+# OSes even if the user hasn't set their LD_LIBRARY_PATH to point to the
+# folder containing elastix's lib folder
 elastix_path=$(realpath $elastix_path)
 # Allow elastix to search for libANNlib-5.0 in the elastix folder and in ../lib
 export LD_LIBRARY_PATH=$(dirname "$elastix_path"):$(dirname "$(dirname "$elastix_path")")/lib
 
+if [ "$1" == "--version" ]; then
+    echo "run_elastix version: $__version__"
+    elastix --version
+    exit 1
+fi
 
 show_help () {
-    >&2 echo "Usage: run_elastix image_to_align.nrrd [-m mask] [-t template] [-tm template_mask] [-p points] [-tp template_points] [-s spacing(s)] [-w bending_weight(s)] [-r] [-a] [-at0 initial_transform] [-b] [-o output_suffix] [-n n_cores] [-v] [-f] [-x] [-y]"
+    >&2 echo "A command line utility for running elastix to register two 3D image volumes"
+    >&2 echo "Version: $__version__"
     >&2 echo ""
-    >&2 echo "   -m mask              Path to mask file specifying which part of the image to consider. Default no mask."
-    >&2 echo "   -t template          Path to image template used for alignment. Default $template (specified in run_elastix_settings)."
-    >&2 echo "   -tm mask             Path to mask file specifying which part of the template to consider. Default no mask."
+    >&2 echo "Command line arguments:"
+    >&2 echo "run_elastix image_to_align.nrrd [-m mask] [-t template] [-tm template_mask]"
+    >&2 echo "                                [-p points] [-tp template_points]"
+    >&2 echo "                                [-s spacing(s)] [-w bending_weight(s)]"
+    >&2 echo "                                [-r] [-a] [-at0 initial_transform] [-b]"
+    >&2 echo "                                [-o output_suffix] [-c num_cores]"
+    >&2 echo "                                [-v] [-f] [-x] [-y] [-n]"
     >&2 echo ""
-    >&2 echo "   -p                   Path to text file containing a list of points in the image. Must be used with -tp."
-    >&2 echo "   -tp                  Path to text file containing a list of points in the template corresponding to the points provided with -p."
-    >&2 echo "                          These pairs of corresponding points will be pulled together during alignment."
+    >&2 echo "  -m mask              Path to mask file specifying which part of the image to consider. Default no mask."
+    >&2 echo "  -t template          Path to image template used for alignment. Default $template (specified in run_elastix_settings)."
+    >&2 echo "  -tm mask             Path to mask file specifying which part of the template to consider. Default no mask."
     >&2 echo ""
-    >&2 echo "   -s spacing(s)        Run alignment with GridSpacingInPhysicalUnits set to spacing. Default 12."
-    >&2 echo "                          Smaller values allow for finer distortions to be modeled, at the cost of increased runtime."
-    >&2 echo "                          This argument can be a list contained in \"\", in which case alignment will be run for each given spacing."
-    >&2 echo "                          Using -s 4 seems to give the best results in many cases."
-    >&2 echo "   -w bending_weight(s) Run alignment with Metric1Weight (the weight assigned to the bending metric) set to bending_weight. Default 100."
-    >&2 echo "                          Smaller values allow for more bending, which can produce better alignments but also can lead to over-warping."
-    >&2 echo "                          This argument can be a list contained in \"\", in which case alignment will be run for each given weight."
-    >&2 echo "                          This value must be tuned for your specific spacing and image. For -s 4, -w 20 often works well."
+    >&2 echo "  -p                   Path to text file containing a list of points in the image. Must be used with -tp."
+    >&2 echo "  -tp                  Path to text file containing a list of points in the template corresponding to the points provided with -p."
+    >&2 echo "                         These pairs of corresponding points will be pulled together during alignment."
     >&2 echo ""
-    >&2 echo "   -r                   (Reverse) Treat the template as the moving image instead of the fixed image."
-    >&2 echo "   -a                   (Affine) Only run affine alignment, skipping Bspline alignment."
-    >&2 echo "   -at0 transform       Initialize an affine alignment by first applying the given transformation file."
-    >&2 echo "   -b                   (Bspline) Only run Bspline alignment. Affine must have previously been run."
+    >&2 echo "  -s spacing(s)        Run alignment with GridSpacingInPhysicalUnits set to this. Default 12."
+    >&2 echo "                         Smaller values allow for finer distortions to be modeled, at the cost of increased runtime."
+    >&2 echo "                         This argument can be a list contained in \"\", in which case alignment will be run for each given spacing."
+    >&2 echo "                         Using -s 4 seems to give the best results in many cases."
+    >&2 echo "  -w bending_weight(s) Run alignment with Metric1Weight set to this. Default 100."
+    >&2 echo "                         Smaller values allow for more bending, which can produce better alignments but also can lead to over-warping."
+    >&2 echo "                         This argument can be a list contained in \"\", in which case alignment will be run for each given weight."
+    >&2 echo "                         This value must be tuned for your specific spacing and image. For -s 4, -w 20 often works well."
     >&2 echo ""
-    >&2 echo "   -o output_suffix     Append suffix to Output folder name. Default is no suffix. Use if you're testing some settings."
-    >&2 echo "   -n n_cores           Allow elastix to use this many CPU cores. Default $number_of_cores_to_use (specified in run_elastix_settings)."
-    >&2 echo "   -v                   (Verbose) Increase output detail. Currently not implemented."
-    >&2 echo "   -f                   (Fake) Don't run, instead print what commands would be run."
-    >&2 echo "   -x                   (X) Do not generate a final image, instead only generate the transformation file."
-    >&2 echo "   -y                   (Yes) say yes to all prompts."
+    >&2 echo "  -r                   (Reverse) Treat the template as the moving image instead of the fixed image."
+    >&2 echo "  -a                   (Affine) Only run affine alignment, skipping Bspline alignment."
+    >&2 echo "  -at0 transform       Initialize an affine alignment by first applying the given transformation file."
+    >&2 echo "  -b                   (Bspline) Only run Bspline alignment. Affine must have previously been run."
+    >&2 echo ""
+    >&2 echo "  -o output_suffix     Append suffix to output folder name. Default is no suffix. Use if you're testing some settings."
+    >&2 echo "  -c num_cores         Allow elastix to use this many CPU cores. Default $number_of_cores_to_use (specified in run_elastix_settings)."
+    >&2 echo "  -v                   (Verbose) Increase output detail. (Currently doesn't do anything - typical output is detailed already.)"
+    >&2 echo "  -f                   (Fake) Don't run, instead print what commands would be run."
+    >&2 echo "  -x                   (X) Do not generate a final image, instead only generate the transformation file."
+    >&2 echo "  -y                   (Yes) Say yes to all prompts (e.g. overwriting existing files)."
+    >&2 echo "  -n                   (No) Say no to all prompts (e.g. skip if any files would be overwritten)."
     >&2 echo ""
     >&2 echo "See $SCRIPT_DIR/README.md for more detailed instructions, advice, and example commands."
     >&2 echo "View that file on GitHub for nice formatting, or type 'run_elastix manual' to open it in your terminal."
@@ -135,7 +153,8 @@ moving_template=false
 run_affine=true
 run_Bspline=true
 suppress_image_writing=false
-yes=false
+say_yes=false
+say_no=false
 
 positionalArgs=()
 unknownOptions=()
@@ -173,7 +192,7 @@ while [ "$#" -gt 0 ]; do
             output_suffix="$2"
             shift; shift
         ;;
-        -n)
+        -c)
             n_cores="$2"
             shift; shift
         ;;
@@ -210,7 +229,11 @@ while [ "$#" -gt 0 ]; do
             shift
         ;;
         -y)
-            yes=true
+            say_yes=true
+            shift
+        ;;
+        -n)
+            say_no=true
             shift
         ;;
         #-e|--exampleLongOption)
@@ -270,9 +293,16 @@ if [ ! -z "${1/*.nrrd/}" ]; then
     exit 1
 fi
 
+if $say_yes && $say_no; then
+    show_help
+    >&2 echo ""
+    >&2 echo "ERROR: Cannot use both -y and -n flags at the same time."
+    exit 1
+fi
+
 #FAKEABLE COMMANDS GO HERE.
 #For the commands listed here, you can use "$command" instead of "command" anywhere in your code that you want the command to echo instead of execute when running in fake mode. For instance, write the line "$mv file1 file2" instead of "mv file1 file2" if you want that line's mv command to not execute when the -f flag is given. If you write "mv file1 file2", then your mv command will happen normally regardless of if -f is given.
-fakeableCommands="rm mv cp ln chmod mkdir realpath sed exit elastix transformix"
+fakeableCommands="rm mv cp ln chmod mkdir realpath sed exit return elastix transformix"
 if $fake; then
     for cmd in $fakeableCommands; do
         eval $cmd=\"echo \$cmd\"
@@ -322,28 +352,36 @@ if [ -n "$output_suffix" ]; then
 fi
 
 
-if $run_affine; then
+func_run_affine() {
     if [ ! -f "${SCRIPT_DIR}/elastixParams_Affine.txt" ]; then
         show_help
         >&2 echo "ERROR: elastix parameter file must exist at ${SCRIPT_DIR}/elastixParams_Affine.txt."
-        exit 1
+        return 1
     fi
 
-    mkdir -p $output/elastix_affine
+    mkdir -p "$output/elastix_affine"
 
-    if grep TODO ${SCRIPT_DIR}/elastixParams_Affine.txt && ! "$yes"; then
-        if ! "$yes"; then
+    if grep TODO ${SCRIPT_DIR}/elastixParams_Affine.txt && ! "$say_yes"; then
+        if "$say_no"; then
+            >&2 echo "WARNING: There's a TODO in the parameter file. Skipping."
+            return 1
+        fi
+        if ! "$say_yes"; then
             >&2 read -p "WARNING: There's a TODO in the parameter file. Are you sure you want to continue? (y/n) " input
-            case $input in [yY]) echo "Continuing" ;; *) echo "Exiting"; exit 1 ;; esac
+            case $input in [yY]) echo "Continuing" ;; *) echo "Exiting"; return 1 ;; esac
         fi
     fi
     elastixParams_affine="$output/elastix_affine/elastixParams_Affine.txt"
     if [ -e "$elastixParams_affine" -a ! -w "$elastixParams_affine" ]; then
-        if $yes; then
+        if "$say_no"; then
+            >&2 echo "WARNING: Parameter file already present ($elastixParams_affine) but not overwritable. Skipping."
+            return 1
+        fi
+        if "$say_yes"; then
             chmod +w $elastixParams_affine
         else
             >&2 read -p "WARNING: Parameter file already present ($elastixParams_affine) but not overwritable. Are you sure you want to overwrite it? (y/n) " input
-            case $input in [yY]) echo "Overwriting"; chmod +w $elastixParams_affine ;; *) echo "Exiting"; exit 1 ;; esac
+            case $input in [yY]) echo "Overwriting"; chmod +w $elastixParams_affine ;; *) echo "Exiting"; return 1 ;; esac
         fi
     fi
     cp ${SCRIPT_DIR}/elastixParams_Affine.txt $elastixParams_affine
@@ -368,29 +406,22 @@ if $run_affine; then
         -p $elastixParams_affine \
         $affine_initial_transform
     echo
-fi
+}
 
-
-if [ -e "$output/elastix_affine/TransformParameters.0.txt" ]; then
-    affine_transformation_parameters=$(realpath "$output/elastix_affine/TransformParameters.0.txt")
-else
-    affine_transformation_parameters="$output/elastix_affine/TransformParameters.0.txt"
-fi
-
-if $run_Bspline; then
+func_run_Bspline() {
     if [ ! -f "${SCRIPT_DIR}/elastixParams_Bspline.txt" ]; then
         show_help
         >&2 echo "ERROR: elastix parameter file must exist at ${SCRIPT_DIR}/elastixParams_Bspline.txt."
-        exit 1
+        return 1
     fi
 
     if ! $fake && [ ! -e "$affine_transformation_parameters" ]; then
         show_help
         >&2 echo "ERROR: Affine transformation parameters must exist at $affine_transformation_parameters before running Bspline alignment."
-        $exit 1
+        $return 1
     fi
 
-    mkdir -p $output/elastix_Bspline
+    mkdir -p "$output/elastix_Bspline"
     for spacing in $spacings; do
         for bending_weight in $bending_weights; do
             this_run_output=$output/elastix_Bspline/${spacing}spacing_${bending_weight}bendingweight${output_suffix}
@@ -399,8 +430,16 @@ if $run_Bspline; then
             #Make new parameter file with requested spacing and bending_weigh
             elastixParams_Bspline="$this_run_output/elastixParams_Bspline.txt"
             if [ -e "$elastixParams_Bspline" -a ! -w "$elastixParams_Bspline" ]; then
-                >&2 read -p "WARNING: Parameter file already present ($elastixParams_Bspline) but not overwritable. Are you sure you want to overwrite it? (y/n) " input
-                case $input in [yY]) echo "Overwriting"; chmod +w $elastixParams_Bspline ;; *) echo "Exiting"; exit 1 ;; esac
+                if "$say_no"; then
+                    >&2 echo "WARNING: Parameter file already present ($elastixParams_Bspline) but not overwritable. Skipping."
+                    return 1
+                fi
+                if "$say_yes"; then
+                    chmod +w $elastixParams_Bspline
+                else
+                    >&2 read -p "WARNING: Parameter file already present ($elastixParams_Bspline) but not overwritable. Are you sure you want to overwrite it? (y/n) " input
+                    case $input in [yY]) echo "Overwriting"; chmod +w $elastixParams_Bspline ;; *) echo "Exiting"; return 1 ;; esac
+                fi
             fi
             cp ${SCRIPT_DIR}/elastixParams_Bspline.txt $elastixParams_Bspline
             sed "${dashi[@]}" "s/(FinalGridSpacingInPhysicalUnits _GRIDSPACING_)/(FinalGridSpacingInPhysicalUnits $spacing)/" $elastixParams_Bspline
@@ -431,4 +470,19 @@ if $run_Bspline; then
             echo
         done
     done
+}
+
+
+if $run_affine; then
+    func_run_affine
+fi
+
+if [ -e "$output/elastix_affine/TransformParameters.0.txt" ]; then
+    affine_transformation_parameters=$(realpath "$output/elastix_affine/TransformParameters.0.txt")
+else
+    affine_transformation_parameters="$output/elastix_affine/TransformParameters.0.txt"
+fi
+
+if $run_Bspline; then
+    func_run_Bspline
 fi
