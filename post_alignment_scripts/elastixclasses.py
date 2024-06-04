@@ -45,15 +45,15 @@ class ElastixLog():
     def final_correlation(self):
         n = self.find_line('last',
                            startswith='Time spent in resolution')
-        return float(self.text[n-1].split('\t')[2])
+        return -float(self.text[n-1].split('\t')[2])
 
     def good_results(self,
-                     correlation_threshold=-0.96,
+                     correlation_threshold=0.96,
                      bending_threshold=0.0000035,
                      verbose=True):
         message = ''
         if (correlation_threshold is not None
-                and self.final_correlation > correlation_threshold):
+                and self.final_correlation < correlation_threshold):
             message += 'Correlation is bad. '
         if (bending_threshold is not None
                 and self.final_bending_metric > bending_threshold):
