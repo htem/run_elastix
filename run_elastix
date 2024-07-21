@@ -148,6 +148,7 @@ bending_weights="100"
 output_suffix=""
 n_cores=$number_of_cores_to_use
 affine_initial_transform=""
+bspline_initial_transform=""
 
 moving_template=false
 run_affine=true
@@ -216,13 +217,27 @@ while [ "$#" -gt 0 ]; do
             shift
         ;;
         -at0)
+            if [ ! -f "$2" ]; then
+                show_help
+                >&2 echo "The -at0 argument does not point to an existing file: $2"
+                exit 1
+            fi
             affine_initial_transform="-t0 $(realpath $2)"
             shift; shift
         ;;
         -b)
             run_affine=false
-            run_Bsplie=true
+            run_Bspline=true
             shift
+        ;;
+        -bt0)
+            if [ ! -f "$2" ]; then
+                show_help
+                >&2 echo "The -bt0 argument does not point to an existing file: $2"
+                exit 1
+            fi
+            bspline_initial_transform="$(realpath $2)"
+            shift; shift
         ;;
         -x)
             suppress_image_writing=true
@@ -415,9 +430,12 @@ func_run_Bspline() {
         return 1
     fi
 
-    if ! $fake && [ ! -e "$affine_transformation_parameters" ]; then
+    if [ -z "$bspline_initial_transform" ]; then
+        bspline_initial_transform="$affine_transformation_parameters"
+    fi
+    if ! $fake && [ ! -e "$bspline_initial_transform" ]; then
         show_help
-        >&2 echo "ERROR: Affine transformation parameters must exist at $affine_transformation_parameters before running Bspline alignment."
+        >&2 echo "ERROR: To run Bspline alignment, either affine transformation parameters must exist at $affine_transformation_parameters or you must provide a Bspline initial transform with the -bt0 argument."
         $return 1
     fi
 
@@ -442,7 +460,7 @@ func_run_Bspline() {
                 fi
             fi
             cp ${SCRIPT_DIR}/elastixParams_Bspline.txt $elastixParams_Bspline
-            sed "${dashi[@]}" "s/(FinalGridSpacingInPhysicalUnits _GRIDSPACING_)/(FinalGridSpacingInPhysicalUnits $spacing)/" $elastixParams_Bspline
+            sed "${dashi[@]}" "s/(FinalGridSpacingInPhysicalUnits _GRIDSPACING_)/(FinalGridSpacingInPhysicalUnits ${spacing//-/ })/" $elastixParams_Bspline
             if $suppress_image_writing; then
                 sed "${dashi[@]}" 's/(WriteResultImage "true")/(WriteResultImage "false")/' $elastixParams_Bspline
             fi
@@ -462,7 +480,7 @@ func_run_Bspline() {
                 $template_mask_argument \
                 $points_argument \
                 -out $this_run_output \
-                -t0 "$affine_transformation_parameters" \
+                -t0 "$bspline_initial_transform" \
                 -threads $n_cores \
                 -p "$elastixParams_Bspline"
 
