@@ -16,9 +16,9 @@ elastix_installation_location=~/software
 template=JRC2018_VNC_FEMALE_4iso.nrrd
 
 
-# How many cores do you want to allow elastix to use?
-# A reasonable number to use here is the number of cores that your computer has minus 1 or minus 2.
-# On Linux, you can find the number of cores on your computer by running: nproc
-# On Mac, you can find the number of cores on your computer by running: sysctl -n hw.ncpu
-# On Windows, you can find the number of cores on your computer by looking at the Performance tab of the Task Manager
-number_of_cores_to_use=7  # A reasonable default for an 8-core computer
+# How many parallel threads do you want to allow elastix to run?
+# A reasonable number to use here is the number of threads that your computer can run simultaneously minus 1 or minus 2.
+# On Linux, you can find the number of threads your computer can run simultaneously by running: nproc
+# On Mac, you can find the number of threads your computer can run simultaneously by running: sysctl -n hw.ncpu
+# On Windows, you can find the number of threads your computer can run simultaneously by looking at the Performance tab of the Task Manager
+number_of_threads_to_use=7  # A reasonable default for a computer that can run 8 threads simultaneously

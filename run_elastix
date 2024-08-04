@@ -75,7 +75,7 @@ show_help () {
     >&2 echo "                                [-s spacing(s)] [-w bending_weight(s)]"
     >&2 echo "                                [-r] [-a] [-at0 affine_initial_transform]"
     >&2 echo "                                [-b] [-bt0 bspline_initial_transform]"
-    >&2 echo "                                [-o output_suffix] [-c num_cores]"
+    >&2 echo "                                [-o output_suffix] [-c num_threads]"
     >&2 echo "                                [-v] [-f] [-x] [-y] [-n]"
     >&2 echo ""
     >&2 echo "  -m mask              Path to mask file specifying which part of the image to consider. Default no mask."
@@ -109,7 +109,7 @@ show_help () {
     >&2 echo "  -bt0 transform_file  Initialize the Bspline alignment(s) by first applying the given transformation file."
     >&2 echo ""
     >&2 echo "  -o output_suffix     Append suffix to output folder name. Default is no suffix. Use if you're testing some settings."
-    >&2 echo "  -c num_cores         Allow elastix to use this many CPU cores. Default $number_of_cores_to_use (specified in run_elastix_settings)."
+    >&2 echo "  -c num_threads       Allow elastix to use this many parallel threads. Default $number_of_threads_to_use (specified in run_elastix_settings)."
     >&2 echo "  -v                   (Verbose) Increase output detail. (Currently doesn't do anything - typical output is detailed already.)"
     >&2 echo "  -f                   (Fake) Don't run any alignments, instead print what commands would be run."
     >&2 echo "  -x                   (X) Do not generate a final image, instead only generate the transformation file."
@@ -155,7 +155,7 @@ template_points=""
 spacings="12"
 bending_weights="100"
 output_suffix=""
-n_cores=$number_of_cores_to_use
+n_threads=$number_of_threads_to_use
 affine_initial_transform=""
 bspline_initial_transform=""
 
@@ -203,7 +203,7 @@ while [ "$#" -gt 0 ]; do
             shift; shift
         ;;
         -c)
-            n_cores="$2"
+            n_threads="$2"
             shift; shift
         ;;
         -v)
@@ -426,7 +426,7 @@ func_run_affine() {
         $template_mask_argument \
         $points_argument \
         -out $output/elastix_affine \
-        -threads $n_cores \
+        -threads $n_threads \
         -p $elastixParams_affine \
         $affine_initial_transform
     echo
@@ -490,7 +490,7 @@ func_run_Bspline() {
                 $points_argument \
                 -out $this_run_output \
                 -t0 "$bspline_initial_transform" \
-                -threads $n_cores \
+                -threads $n_threads \
                 -p "$elastixParams_Bspline"
 
             $ln -s ${spacing}spacing_${bending_weight}bendingweight${output_suffix}/result.0.nrrd $output/elastix_Bspline/result.${spacing}spacing_${bending_weight}bendingweight${output_suffix}.nrrd 2> /dev/null
