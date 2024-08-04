@@ -58,8 +58,9 @@ export LD_LIBRARY_PATH=$(dirname "$elastix_path"):$(dirname "$(dirname "$elastix
 
 
 show_help () {
-    >&2 echo "Usage: invert_elastix folder_containing_transform_to_invert [-v] [-f] [-o output_suffix] [-n n_threads] [-s spacings] [-w]"
-    >&2 echo "Example: ./invert_elastix ../motor_neurons/21G01-LexA/21G01LexA_vnc2_60x_T1_2019_09_19_neuropil_elastix_to_moving_template/elastix_Bspline/4spacing_20bendingweight"
+    >&2 echo "Usage: invert_elastix folder_containing_transform_to_invert [-v|--verbose] [-f|--fake]"
+    >&2 echo "                      [-o output_suffix] [-n n_threads] [-s spacings] [-w|--write_intermediate_output]"
+    >&2 echo "Example: ./invert_elastix 21G01LexA_vnc2_60x_T1_2019_09_19_neuropil_elastix_to_moving_template/elastix_Bspline/4spacing_20bendingweight"
 }
 
 if [ "$#" -eq 0 ] || [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
@@ -91,9 +92,9 @@ output_suffix=""
 moving_template=false
 run_affine=true
 run_Bspline=true
-n_threads="30"
+n_threads=$number_of_threads_to_use
 spacings="6"
-write_intermediate_output=true
+write_intermediate_output=false
 
 
 positionalArgs=()
@@ -232,7 +233,7 @@ for spacing in $spacings; do
         case $input in [yY]) echo "Overwriting"; chmod +w "$elastixParams";; *) echo "Exiting"; exit 1 ;; esac
     fi 
     cp "${SCRIPT_DIR}/elastixParams_InvertBspline.txt" "$elastixParams"
-    sed "${dashi[@]}" "s/(FinalGridSpacingInPhysicalUnits _GRIDSPACING_)/(FinalGridSpacingInPhysicalUnits $spacing)/" "$elastixParams"
+    sed "${dashi[@]}" "s/(FinalGridSpacingInPhysicalUnits _GRIDSPACING_)/(FinalGridSpacingInPhysicalUnits ${spacing//-/ })/" "$elastixParams"
     if $write_intermediate_output; then sed "${dashi[@]}" 's/(WriteResultImage "false")/(WriteResultImage "true")/' "$elastixParams"; fi
     $chmod -w "$elastixParams"
 
