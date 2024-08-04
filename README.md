@@ -20,7 +20,7 @@ Currently runs on Mac (tested on Big Sur) and Linux (tested on Ubuntu 16.04, 18.
 
 **E.** Open the file `run_elastix_settings` in this folder and change the line starting with `template=` to be the filename of the template you want to use. (The default value is `JRC2018_VNC_FEMALE_4iso.nrrd`, the 2018 Janelia Female VNC template.) Either put the `.nrrd` file in the same folder as `run_elastix`, or put the full path to where your `.nrrd` file is into the settings file.
 
-**F.** Edit the final line in `run_elastix_settings` to tell elastix how many of your computer's CPU cores it can use by default.
+**F.** Edit the final line in `run_elastix_settings` to tell elastix how many of your computer's CPU threads it can use by default.
 
 
 ### Step 1: Prepare input files
@@ -55,11 +55,11 @@ This example runs elastix Bspline (-b) alignment, again using your image as the 
 
 By far the most important parameters to tune to get good alignment are the grid spacing (-s) and bending weight (-w). -s is a value specified in microns that determines how small of cubes the image volume is split up into, with each cube being warped with different parameters. Therefore, -s determines how small of features can be warped independently from their neighbors. Smaller -s means smaller cubes, meaning usually better registration results, but at the cost of longer runtime. -w influences how strongly the parameters are encouraged to have small values, which helps reduce unrealisticly large distortions. Your goal is to find a proper value of -w that allows for just enough elasticity to get a good alignment, without allowing unrealistic distortions. For mathematical reasons, optimal values of -w scale with the value of -s (i.e. larger -s values require larger -w).<br>
 Some good -s/-w pairings to try first, depending on how much time you're willing to wait:<br>
-`-s 24 -w "400 800"`      :  Runs 2 alignments in about 6 minutes each (on 30 cores)<br>
-`-s 12 -w "40 200"`       :  Runs 2 alignments in about 10 minutes each (on 30 cores)<br>
-`-s 8 -w "20 80"`         :  Runs 2 alignments in about 17 minutes each (on 30 cores)<br>
-`-s 6 -w "15 60"`         :  Runs 2 alignments in about 25 minutes each (on 30 cores)<br>
-`-s 4 -w "10 40"`         :  Runs 2 alignments in about 45 minutes each (on 30 cores)<br>
+`-s 24 -w "400 800"`      :  Runs 2 alignments in about 6 minutes each (on 30 threads)<br>
+`-s 12 -w "40 200"`       :  Runs 2 alignments in about 10 minutes each (on 30 threads)<br>
+`-s 8 -w "20 80"`         :  Runs 2 alignments in about 17 minutes each (on 30 threads)<br>
+`-s 6 -w "15 60"`         :  Runs 2 alignments in about 25 minutes each (on 30 threads)<br>
+`-s 4 -w "10 40"`         :  Runs 2 alignments in about 45 minutes each (on 30 threads)<br>
 Note how multiple values for -w can be specified by putting them in quotes separated by spaces. In this way you can use a single `run_elastix` command to perform multiple sequential alignments with different elasticities. This can also be done with -s, e.g.:<br>
 `run_elastix sample1_neuropil.nrrd -b -s "4 6" -w "10 20 80"`<br>
 This would run runs 6 Bspline (-b) alignments with each combination of the given -s and -w  values (i.e. 4&10, 4&20, 4&80, 6&10, 6&20, and 6&80). It's often useful to run a few different alignments in this way, go do other stuff, and then come back when it's finished.
@@ -76,6 +76,6 @@ This would run runs 6 Bspline (-b) alignments with each combination of the given
 - **4a.1** `transformix -in your_neuron_stack.nrrd -out ./ -tp path/to/your/TransformParameters.0.txt`
 
 #### Step 4b: Apply the transformation to your traced neuron
-- **4b.1** Warping a neuron tracing (a set of points) requires the inverse of the function that was required to warp an image stack. To generate the inverse of the parameters you generated above, run `invert_elastix your_stack_name_elastix_to_fixed_template/elastix_Bspline/4spacing_20weight`, replacing the path with the path to the folder containing your best alignment. This takes about 10 minutes on 30 cores.
+- **4b.1** Warping a neuron tracing (a set of points) requires the inverse of the function that was required to warp an image stack. To generate the inverse of the parameters you generated above, run `invert_elastix your_stack_name_elastix_to_fixed_template/elastix_Bspline/4spacing_20weight`, replacing the path with the path to the folder containing your best alignment. This takes about 10 minutes on 30 threads.
 - **4b.2** Inspect the output images (`result.0.composedForwardAndInverseTransforms.nrrd` and `result.1.nrrd`) to make sure the inversion went well. The only time I've seen inversions not go well is if your image data is close to the right edge (high x) or the bottom edge (high y) of the stack, sometimes there can be weird artifacts at those edges. If you see this, expand your stack in x and/or y and try realigning and then re-inverting.
 - **4b.3** Warp your neuron tracing using the inverted parameters by going into the [post_alignment_scripts](https://github.com/htem/run_elastix/tree/main/post_alignment_scripts) folder and running `transform_swc.py your_unaligned_neuron_tracing.swc blah/elastix_Bspline/4spacing_20weight/inverted_6spacing/TransformParameters.1.txt`. (This will require you to first follow the installation instructions for [pytransformix](https://github.com/jasper-tms/pytransformix).) Be sure to use `TransformParameters.1.txt`, but change the other parts of this example command to point to your files.
