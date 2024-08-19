@@ -70,26 +70,26 @@ show_help () {
     >&2 echo "Version: $__version__"
     >&2 echo ""
     >&2 echo "Command line arguments:"
-    >&2 echo "run_elastix image_to_align.nrrd [-m mask] [-t template] [-tm template_mask]"
-    >&2 echo "                                [-p points] [-tp template_points]"
+    >&2 echo "run_elastix image_to_align.nrrd [-m mask] [-t target] [-tm target_mask]"
+    >&2 echo "                                [-p points] [-tp target_points]"
     >&2 echo "                                [-s spacing(s)] [-w bending_weight(s)]"
-    >&2 echo "                                [-r] [-a] [-at0 affine_initial_transform]"
-    >&2 echo "                                [-b] [-bt0 bspline_initial_transform]"
-    >&2 echo "                                [-o output_suffix] [-c num_threads]"
+    >&2 echo "                                [-r] [-a] [-ap affine_parameters_file] [-at0 affine_initial_transform]"
+    >&2 echo "                                [-b] [-bp bspline_parameters_file] [-bt0 bspline_initial_transform]"
+    >&2 echo "                                [-o output_suffix] [--threads num_threads]"
     >&2 echo "                                [-v] [-f] [-x] [-y] [-n]"
     >&2 echo ""
     >&2 echo "  -m mask              Path to mask file specifying which part of the image to consider. Default no mask."
-    >&2 echo "  -t template          Path to image template used for alignment. Default $template (specified in run_elastix_settings)."
-    >&2 echo "  -tm mask             Path to mask file specifying which part of the template to consider. Default no mask."
+    >&2 echo "  -t target            Path to target image volume to align to. Default $target (specified in run_elastix_settings)."
+    >&2 echo "  -tm mask             Path to mask file specifying which part of the target image to consider. Default no mask."
     >&2 echo ""
     >&2 echo "  -p                   Path to text file containing a list of points in the image. Must be used with -tp."
-    >&2 echo "  -tp                  Path to text file containing a list of points in the template corresponding to the points provided with -p."
+    >&2 echo "  -tp                  Path to text file containing a list of points in the target corresponding to the points provided with -p."
     >&2 echo "                         These pairs of corresponding points will be pulled together during alignment."
     >&2 echo ""
     >&2 echo "  -s spacing(s)        Run Bspline alignment with GridSpacingInPhysicalUnits set to this. Default 12."
     >&2 echo "                         This value absolutely must be tuned based on the physical size of your image! The default of 12 would likely"
     >&2 echo "                           be too small for a 1000x1000x1000 units (e.g. microns) image, but too large for a 40x40x40 units image."
-    >&2 echo "                           Your image and template must have a pixel size set in the metadata for this value to be intepreted correctly."
+    >&2 echo "                           Your image and target must have a pixel size set in the metadata for this value to be intepreted correctly."
     >&2 echo "                         Smaller values allow for finer distortions to be modeled, at the cost of increased runtime."
     >&2 echo "                         This argument can be a space-separated list contained in \"\", in which case multiple"
     >&2 echo "                           alignments will be run, one for each given spacing. (e.g. -s \"6 12 24\")"
@@ -102,14 +102,16 @@ show_help () {
     >&2 echo "                         This value must be tuned for your specific -s argument and depends on how much contrast is in your image."
     >&2 echo "                         For Drosophila nervous system template alignment, using -w 20 with -s 4 often gives good results."
     >&2 echo ""
-    >&2 echo "  -r                   (Reverse) Treat the template as the moving image instead of the fixed image."
+    >&2 echo "  -r                   (Reverse) Instead of aligning the image to the target, align the target to the image."
     >&2 echo "  -a                   (Affine) Only run affine alignment, skipping Bspline alignment. -s and -w are ignored."
+    >&2 echo "  -ap parameters_file  Use the given elastix parameter file to run the affine alignment. Default ${SCRIPT_DIR}/elastixParams_affine.txt."
     >&2 echo "  -at0 transform_file  Initialize the affine alignment by first applying the given transformation file."
     >&2 echo "  -b                   (Bspline) Only run Bspline alignment. Affine must have previously been run, or you must provide a -bt0."
+    >&2 echo "  -bp parameters_file  Use the given elastix parameter file to run the Bspline alignment. Default ${SCRIPT_DIR}/elastixParams_Bspline.txt."
     >&2 echo "  -bt0 transform_file  Initialize the Bspline alignment(s) by first applying the given transformation file."
     >&2 echo ""
     >&2 echo "  -o output_suffix     Append suffix to output folder name. Default is no suffix. Use if you're testing some settings."
-    >&2 echo "  -c num_threads       Allow elastix to use this many parallel threads. Default $number_of_threads_to_use (specified in run_elastix_settings)."
+    >&2 echo "  --threads n_threads  Allow elastix to use this many parallel threads. Default $number_of_threads_to_use (specified in run_elastix_settings)."
     >&2 echo "  -v                   (Verbose) Increase output detail. (Currently doesn't do anything - typical output is detailed already.)"
     >&2 echo "  -f                   (Fake) Don't run any alignments, instead print what commands would be run."
     >&2 echo "  -x                   (X) Do not generate a final image, instead only generate the transformation file."
@@ -144,22 +146,23 @@ fi
 
 
 
-
 #DEFAULTS FOR ARGUMENT-MODIFIABLE VARIABLES GO HERE
 verbose=false
 fake=false
 mask=""
-template_mask="" #"../mask_T1_neuromeres.nrrd"
+target_mask=""
 points=""
-template_points=""
+target_points=""
 spacings="12"
 bending_weights="100"
 output_suffix=""
 n_threads=$number_of_threads_to_use
 affine_initial_transform=""
+affine_runparams="${SCRIPT_DIR}/elastixParams_affine.txt"
 bspline_initial_transform=""
+bspline_runparams="${SCRIPT_DIR}/elastixParams_Bspline.txt"
 
-moving_template=false
+moving_target=false
 run_affine=true
 run_Bspline=true
 suppress_image_writing=false
@@ -175,11 +178,11 @@ while [ "$#" -gt 0 ]; do
             shift; shift
         ;;
         -t)
-            template="$2"
+            target="$2"
             shift; shift
         ;;
         -tm)
-            template_mask="$2"
+            target_mask="$2"
             shift; shift
         ;;
         -p)
@@ -187,7 +190,7 @@ while [ "$#" -gt 0 ]; do
             shift; shift
         ;;
         -tp)
-            template_points="$2"
+            target_points="$2"
             shift; shift
         ;;
         -s)
@@ -202,7 +205,7 @@ while [ "$#" -gt 0 ]; do
             output_suffix="$2"
             shift; shift
         ;;
-        -c)
+        --threads)
             n_threads="$2"
             shift; shift
         ;;
@@ -217,13 +220,25 @@ while [ "$#" -gt 0 ]; do
             shift
         ;;
         -r)
-            moving_template=true
+            moving_target=true
             shift
         ;;
         -a)
             run_affine=true
             run_Bspline=false
             shift
+        ;;
+        -ap)
+            if [ -f "$2" ]; then
+                affine_runparams="$2"
+            elif [ -f "${SCRIPT_DIR}/$2" ]; then
+                affine_runparams="${SCRIPT_DIR}/$2"
+            else
+                show_help
+                >&2 echo "The -ap argument does not point to an existing file: $2"
+                exit 1
+            fi
+            shift; shift
         ;;
         -at0)
             if [ ! -f "$2" ]; then
@@ -238,6 +253,18 @@ while [ "$#" -gt 0 ]; do
             run_affine=false
             run_Bspline=true
             shift
+        ;;
+        -bp)
+            if [ -f "$2" ]; then
+                bspline_runparams="$2"
+            elif [ -f "${SCRIPT_DIR}/$2" ]; then
+                bspline_runparams="${SCRIPT_DIR}/$2"
+            else
+                show_help
+                >&2 echo "The -bp argument does not point to an existing file: $2"
+                exit 1
+            fi
+            shift; shift
         ;;
         -bt0)
             if [ ! -f "$2" ]; then
@@ -294,19 +321,19 @@ fi
 #echo $@
 
 #ARGUMENT VALIDATION
-if [ ! -f "$template" ]; then
-    if [ -f "${SCRIPT_DIR}/$template" ]; then
-        template="${SCRIPT_DIR}/$template"
+if [ ! -f "$target" ]; then
+    if [ -f "${SCRIPT_DIR}/$target" ]; then
+        target="${SCRIPT_DIR}/$target"
     else
         show_help
-        >&2 echo "The filename provided for the template was \"$template\" but that file does not exist."
-        >&2 echo "Specify the template's filename using the \"-t\" argument to run_elastix or put it into ${SCRIPT_DIR}/run_elastix_settings"
+        >&2 echo "The filename provided for the target image was \"$target\" but that file does not exist."
+        >&2 echo "Specify the target's filename using the \"-t\" argument, or put it into ${SCRIPT_DIR}/run_elastix_settings"
         exit 1
     fi
 fi
 if [ ! -f "$1" ]; then
     show_help
-    echo "The given argument does not point to an existing file: $1"
+    echo "A file with the given filename does not exist: $1"
     exit 1
 fi
 if [ ! -z "${1/*.nrrd/}" ]; then
@@ -341,33 +368,33 @@ fi
 #CODE GOES HERE
 image_to_align="$1"
 mask_argument=""
-template_mask_argument=""
+target_mask_argument=""
 points_argument=""
-if $moving_template; then
+if $moving_target; then
     fixed=$image_to_align
-    moving=$template
-    output="${1/.nrrd/}_elastix_to_moving_template"
+    moving=$target
+    output="${1/.nrrd/}_elastix_with_moving_target"
     if [ -n "$mask" ]; then
         mask_argument="-fMask $mask"
     fi
-    if [ -n "$template_mask" ]; then
-        template_mask_argument="-mMask $template_mask"
+    if [ -n "$target_mask" ]; then
+        target_mask_argument="-mMask $target_mask"
     fi
-    if [ -n "$points" -a -n "$template_points" ]; then
-        points_argument="-fp $points -mp $template_points"
+    if [ -n "$points" -a -n "$target_points" ]; then
+        points_argument="-fp $points -mp $target_points"
     fi
 else
-    fixed=$template
+    fixed=$target
     moving=$image_to_align
-    output="${1/.nrrd/}_elastix_to_fixed_template"
+    output="${1/.nrrd/}_elastix"
     if [ -n "$mask" ]; then
         mask_argument="-mMask $mask"
     fi
-    if [ -n "$template_mask" ]; then
-        template_mask_argument="-fMask $template_mask"
+    if [ -n "$target_mask" ]; then
+        target_mask_argument="-fMask $target_mask"
     fi
-    if [ -n "$points" -a -n "$template_points" ]; then
-        points_argument="-fp $template_points -mp $points"
+    if [ -n "$points" -a -n "$target_points" ]; then
+        points_argument="-fp $target_points -mp $points"
     fi
 fi
 
@@ -377,15 +404,15 @@ fi
 
 
 func_run_affine() {
-    if [ ! -f "${SCRIPT_DIR}/elastixParams_Affine.txt" ]; then
+    if [ ! -f "$affine_runparams" ]; then
         show_help
-        >&2 echo "ERROR: elastix parameter file must exist at ${SCRIPT_DIR}/elastixParams_Affine.txt."
+        >&2 echo "ERROR: elastix parameter file does not exist at $affine_runparams"
         return 1
     fi
 
-    mkdir -p "$output/elastix_affine"
+    mkdir -p "$output/affine"
 
-    if grep TODO ${SCRIPT_DIR}/elastixParams_Affine.txt && ! "$say_yes"; then
+    if grep TODO "$affine_runparams" && ! "$say_yes"; then
         if "$say_no"; then
             >&2 echo "WARNING: There's a TODO in the parameter file. Skipping."
             return 1
@@ -395,47 +422,47 @@ func_run_affine() {
             case $input in [yY]) echo "Continuing" ;; *) echo "Exiting"; return 1 ;; esac
         fi
     fi
-    elastixParams_affine="$output/elastix_affine/elastixParams_Affine.txt"
-    if [ -e "$elastixParams_affine" -a ! -w "$elastixParams_affine" ]; then
+    affine_runparams_copy="$output/affine/elastixParams_affine.txt"
+    if [ -e "$affine_runparams_copy" -a ! -w "$affine_runparams_copy" ]; then
         if "$say_no"; then
-            >&2 echo "WARNING: Parameter file already present ($elastixParams_affine) but not overwritable. Skipping."
+            >&2 echo "WARNING: Parameter file already present ($affine_runparams_copy) but not overwritable. Skipping."
             return 1
         fi
         if "$say_yes"; then
-            chmod +w $elastixParams_affine
+            chmod +w $affine_runparams_copy
         else
-            >&2 read -p "WARNING: Parameter file already present ($elastixParams_affine) but not overwritable. Are you sure you want to overwrite it? (y/n) " input
-            case $input in [yY]) echo "Overwriting"; chmod +w $elastixParams_affine ;; *) echo "Exiting"; return 1 ;; esac
+            >&2 read -p "WARNING: Parameter file already present ($affine_runparams_copy) but not overwritable. Are you sure you want to overwrite it? (y/n) " input
+            case $input in [yY]) echo "Overwriting"; chmod +w "$affine_runparams_copy" ;; *) echo "Exiting"; return 1 ;; esac
         fi
     fi
-    cp ${SCRIPT_DIR}/elastixParams_Affine.txt $elastixParams_affine
+    cp "$affine_runparams" "$affine_runparams_copy"
     if $suppress_image_writing; then
-        sed "${dashi[@]}" 's/(WriteResultImage "true")/(WriteResultImage "false")/' $elastixParams_affine
+        sed "${dashi[@]}" 's/(WriteResultImage "true")/(WriteResultImage "false")/' "$affine_runparams_copy"
     fi
-    if [ -n "$points" -a -n "$template_points" ]; then
-        sed "${dashi[@]}" 's/(Metric "AdvancedNormalizedCorrelation")/(Metric "AdvancedNormalizedCorrelation" "CorrespondingPointsEuclideanDistanceMetric")\r\n(Metric0Weight 1)\r\n(Metric1Weight 0.01)/' $elastixParams_affine
-        sed "${dashi[@]}" 's/\/\/(Metric1Use/(Metric1Use/' $elastixParams_affine
-        cp "$points" "$template_points" "$output/elastix_affine/"
+    if [ -n "$points" -a -n "$target_points" ]; then
+        sed "${dashi[@]}" 's/(Metric "AdvancedNormalizedCorrelation")/(Metric "AdvancedNormalizedCorrelation" "CorrespondingPointsEuclideanDistanceMetric")\r\n(Metric0Weight 1)\r\n(Metric1Weight 0.01)/' "$affine_runparams_copy"
+        sed "${dashi[@]}" 's/\/\/(Metric1Use/(Metric1Use/' "$affine_runparams_copy"
+        cp "$points" "$target_points" "$output/affine/"
     fi
-    $chmod -w $elastixParams_affine
+    $chmod -w "$affine_runparams_copy"
 
     echo "AFFINE"
     $elastix -f $fixed \
         -m $moving \
         $mask_argument \
-        $template_mask_argument \
+        $target_mask_argument \
         $points_argument \
-        -out $output/elastix_affine \
+        -out $output/affine \
         -threads $n_threads \
-        -p $elastixParams_affine \
+        -p "$affine_runparams_copy" \
         $affine_initial_transform
     echo
 }
 
 func_run_Bspline() {
-    if [ ! -f "${SCRIPT_DIR}/elastixParams_Bspline.txt" ]; then
+    if [ ! -f "$bspline_runparams" ]; then
         show_help
-        >&2 echo "ERROR: elastix parameter file must exist at ${SCRIPT_DIR}/elastixParams_Bspline.txt."
+        >&2 echo "ERROR: elastix parameter file does not exist at $bspline_runparams"
         return 1
     fi
 
@@ -448,52 +475,52 @@ func_run_Bspline() {
         $return 1
     fi
 
-    mkdir -p "$output/elastix_Bspline"
+    mkdir -p "$output/Bspline"
     for spacing in $spacings; do
         for bending_weight in $bending_weights; do
-            this_run_output=$output/elastix_Bspline/${spacing}spacing_${bending_weight}bendingweight${output_suffix}
+            this_run_output="$output/Bspline/${spacing}spacing_${bending_weight}bendingweight${output_suffix}"
             mkdir -p $this_run_output
 
             #Make new parameter file with requested spacing and bending_weigh
-            elastixParams_Bspline="$this_run_output/elastixParams_Bspline.txt"
-            if [ -e "$elastixParams_Bspline" -a ! -w "$elastixParams_Bspline" ]; then
+            bspline_runparams_copy="$this_run_output/elastixParams_Bspline.txt"
+            if [ -e "$bspline_runparams_copy" -a ! -w "$bspline_runparams_copy" ]; then
                 if "$say_no"; then
-                    >&2 echo "WARNING: Parameter file already present ($elastixParams_Bspline) but not overwritable. Skipping."
+                    >&2 echo "WARNING: Parameter file already present ($bspline_runparams_copy) but not overwritable. Skipping."
                     return 1
                 fi
                 if "$say_yes"; then
-                    chmod +w $elastixParams_Bspline
+                    chmod +w "$bspline_runparams_copy"
                 else
-                    >&2 read -p "WARNING: Parameter file already present ($elastixParams_Bspline) but not overwritable. Are you sure you want to overwrite it? (y/n) " input
-                    case $input in [yY]) echo "Overwriting"; chmod +w $elastixParams_Bspline ;; *) echo "Exiting"; return 1 ;; esac
+                    >&2 read -p "WARNING: Parameter file already present ($bspline_runparams_copy) but not overwritable. Are you sure you want to overwrite it? (y/n) " input
+                    case $input in [yY]) echo "Overwriting"; chmod +w "$bspline_runparams_copy" ;; *) echo "Exiting"; return 1 ;; esac
                 fi
             fi
-            cp ${SCRIPT_DIR}/elastixParams_Bspline.txt $elastixParams_Bspline
-            sed "${dashi[@]}" "s/(FinalGridSpacingInPhysicalUnits _GRIDSPACING_)/(FinalGridSpacingInPhysicalUnits ${spacing//-/ })/" $elastixParams_Bspline
+            cp "$bspline_runparams" "$bspline_runparams_copy"
+            sed "${dashi[@]}" "s/(FinalGridSpacingInPhysicalUnits _GRIDSPACING_)/(FinalGridSpacingInPhysicalUnits ${spacing//-/ })/" "$bspline_runparams_copy"
             if $suppress_image_writing; then
-                sed "${dashi[@]}" 's/(WriteResultImage "true")/(WriteResultImage "false")/' $elastixParams_Bspline
+                sed "${dashi[@]}" 's/(WriteResultImage "true")/(WriteResultImage "false")/' "$bspline_runparams_copy"
             fi
-            if [ -n "$points" -a -n "$template_points" ]; then
-                sed "${dashi[@]}" 's/(Metric "AdvancedNormalizedCorrelation" "TransformBendingEnergyPenalty")/(Metric "AdvancedNormalizedCorrelation" "TransformBendingEnergyPenalty" "CorrespondingPointsEuclideanDistanceMetric")/' $elastixParams_Bspline
-                sed "${dashi[@]}" 's/\/\/(Metric2Weight/(Metric2Weight/' $elastixParams_Bspline
-                sed "${dashi[@]}" 's/\/\/(Metric2Use/(Metric2Use/' $elastixParams_Bspline
-                cp "$points" "$template_points" "$this_run_output/"
+            if [ -n "$points" -a -n "$target_points" ]; then
+                sed "${dashi[@]}" 's/(Metric "AdvancedNormalizedCorrelation" "TransformBendingEnergyPenalty")/(Metric "AdvancedNormalizedCorrelation" "TransformBendingEnergyPenalty" "CorrespondingPointsEuclideanDistanceMetric")/' "$bspline_runparams_copy"
+                sed "${dashi[@]}" 's/\/\/(Metric2Weight/(Metric2Weight/' "$bspline_runparams_copy"
+                sed "${dashi[@]}" 's/\/\/(Metric2Use/(Metric2Use/' "$bspline_runparams_copy"
+                cp "$points" "$target_points" "$this_run_output/"
             fi
-            sed "${dashi[@]}" "s/(Metric1Weight _METRIC1WEIGHT_)/(Metric1Weight $bending_weight)/" $elastixParams_Bspline
-            $chmod -w $elastixParams_Bspline
+            sed "${dashi[@]}" "s/(Metric1Weight _METRIC1WEIGHT_)/(Metric1Weight $bending_weight)/" "$bspline_runparams_copy"
+            $chmod -w "$bspline_runparams_copy"
 
             echo "elastix with BSPLINE TRANSFORM saving to $this_run_output"
             $elastix -f "$fixed" \
                 -m "$moving" \
                 $mask_argument \
-                $template_mask_argument \
+                $target_mask_argument \
                 $points_argument \
                 -out $this_run_output \
                 -t0 "$bspline_initial_transform" \
                 -threads $n_threads \
-                -p "$elastixParams_Bspline"
+                -p "$bspline_runparams_copy"
 
-            $ln -s ${spacing}spacing_${bending_weight}bendingweight${output_suffix}/result.0.nrrd $output/elastix_Bspline/result.${spacing}spacing_${bending_weight}bendingweight${output_suffix}.nrrd 2> /dev/null
+            $ln -s ${spacing}spacing_${bending_weight}bendingweight${output_suffix}/result.0.nrrd $output/Bspline/result.${spacing}spacing_${bending_weight}bendingweight${output_suffix}.nrrd 2> /dev/null
             echo
         done
     done
@@ -504,10 +531,10 @@ if $run_affine; then
     func_run_affine
 fi
 
-if [ -e "$output/elastix_affine/TransformParameters.0.txt" ]; then
-    affine_transformation_parameters=$(realpath "$output/elastix_affine/TransformParameters.0.txt")
+if [ -e "$output/affine/TransformParameters.0.txt" ]; then
+    affine_transformation_parameters=$(realpath "$output/affine/TransformParameters.0.txt")
 else
-    affine_transformation_parameters="$output/elastix_affine/TransformParameters.0.txt"
+    affine_transformation_parameters="$output/affine/TransformParameters.0.txt"
 fi
 
 if $run_Bspline; then

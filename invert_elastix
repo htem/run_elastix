@@ -68,9 +68,9 @@ if [ "$#" -eq 0 ] || [ "$1" == "--help" ] || [ "$1" == "-h" ]; then
     exit 1
 fi
 
-if [ ! -f ${SCRIPT_DIR}/elastixParams_InvertBspline.txt ]; then
+if [ ! -f ${SCRIPT_DIR}/elastixParams_invertBspline.txt ]; then
     show_help
-    >&2 echo "ERROR: elastixParams_InvertBspline.txt must exist in ${SCRIPT_DIR}"
+    >&2 echo "ERROR: elastixParams_invertBspline.txt must exist in ${SCRIPT_DIR}"
     exit 1
 fi
 
@@ -226,13 +226,13 @@ for spacing in $spacings; do
     output_folder=$base/inverted_${spacing}spacing$output_suffix
 
     mkdir -p $output_folder
-    elastixParams="$output_folder/elastixParams_InvertBspline.txt"
+    elastixParams="$output_folder/elastixParams_invertBspline.txt"
 
     if [ -e "$elastixParams" -a ! -w "$elastixParams" ]; then
         >&2 read -p "Parameter file already present ($elastixParams) but not overwritable. Are you sure you want to overwrite it? (y/n) " input
         case $input in [yY]) echo "Overwriting"; chmod +w "$elastixParams";; *) echo "Exiting"; exit 1 ;; esac
     fi 
-    cp "${SCRIPT_DIR}/elastixParams_InvertBspline.txt" "$elastixParams"
+    cp "${SCRIPT_DIR}/elastixParams_invertBspline.txt" "$elastixParams"
     sed "${dashi[@]}" "s/(FinalGridSpacingInPhysicalUnits _GRIDSPACING_)/(FinalGridSpacingInPhysicalUnits ${spacing//-/ })/" "$elastixParams"
     if $write_intermediate_output; then sed "${dashi[@]}" 's/(WriteResultImage "false")/(WriteResultImage "true")/' "$elastixParams"; fi
     $chmod -w "$elastixParams"
