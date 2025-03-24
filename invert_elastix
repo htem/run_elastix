@@ -253,7 +253,9 @@ for spacing in $spacings; do
     if [ -f "$output_folder/result.0.nrrd" ]; then $mv "$output_folder/result.0.nrrd" "$output_folder/result.0.composedForwardAndInverseTransforms.nrrd"; fi
 
     $cp "$output_folder/TransformParameters.0.txt" "$output_folder/TransformParameters.1.txt"
+    # Different versions of elastix did or didn't put an s in the parameter name below, so replace both
     $sed "${dashi[@]}" 's/(InitialTransformParametersFileName.*)/(InitialTransformParametersFileName "NoInitialTransform")/' "$output_folder/TransformParameters.1.txt"
+    $sed "${dashi[@]}" 's/(InitialTransformParameterFileName.*)/(InitialTransformParameterFileName "NoInitialTransform")/' "$output_folder/TransformParameters.1.txt"
 
     #Apply the inverted transform to the fixed image
     $transformix -in "$fixed" \
