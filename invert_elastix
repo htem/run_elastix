@@ -176,7 +176,7 @@ fi
 
 #CODE GOES HERE
 
-base=$1 #$(realpath "$1")
+base="$(cd "$1" && pwd)"
 if [ ! -d "$base" ]; then
     show_help
     >&2 echo "ERROR: Argument must be an existing folder"
@@ -189,10 +189,18 @@ if [ ! -f "$elastix_log" ]; then
     >&2 echo "ERROR: elastix.log not present in $base"
     exit 1
 fi
+caller_out=$(grep -- "-out  " "$elastix_log" | sed 's/-out *//')
+caller_out=${caller_out%/}
+caller_base=${base%$caller_out}
+if [ "$caller_base" == "$base" ]; then
+    >&2 echo "ERROR: Could not find folder from which elastix was called"
+    >&2 echo "Attempted unsuccessfully to remove $caller_out from the end of $base"
+    exit 1
+fi
 
 moving=$(grep -- "-m  " "$elastix_log" | sed 's/-m *//')
 if [ ! -f "$moving" ]; then
-    moving=$(realpath $base/../../../$moving)
+    moving=$(realpath "$caller_base/$moving")
     if [ ! -f  "$moving" ]; then
         show_help
         >&2 echo "ERROR: moving image could not be found at $moving"
@@ -201,7 +209,7 @@ if [ ! -f "$moving" ]; then
 fi
 fixed=$(grep -- "-f  " "$elastix_log" | sed 's/-f *//')
 if [ ! -f "$fixed" ]; then
-    fixed=$(realpath "$base/../../../$fixed")
+    fixed=$(realpath "$caller_base/$fixed")
     if [ ! -f  "$fixed" ]; then
         show_help
         >&2 echo "ERROR: fixed image could not be found at $fixed"
