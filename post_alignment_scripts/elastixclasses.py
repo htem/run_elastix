@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import math
 
 
 class ElastixLog():
@@ -10,6 +11,12 @@ class ElastixLog():
         self.filename = filename
         with open(filename, 'r') as f:
             self.text = f.read().splitlines()
+
+    def exists(self):
+        return os.path.exists(self.filename)
+
+    def crashed(self):
+        return self.text[-1].startswith('Error')
 
     def find_line(self,
                   first_or_last='first',
@@ -52,6 +59,10 @@ class ElastixLog():
                      bending_threshold=0.0000035,
                      verbose=True):
         message = ''
+        if math.isnan(self.final_metric_value):
+            message += 'Final metric value is NaN. '
+        if math.isnan(self.final_correlation):
+            message += 'Final correlation is NaN. '
         if (correlation_threshold is not None
                 and self.final_correlation < correlation_threshold):
             message += 'Correlation is bad. '
