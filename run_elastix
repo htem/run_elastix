@@ -30,8 +30,8 @@ if which elastix > /dev/null; then
     elastix_path=$(which elastix)
     echo "Using elastix found on the PATH: $elastix_path"
 else
-    elastix_path=$(ls $elastix_installation_location/elastix*/bin/elastix)
-    n_elastix_found=$(ls $elastix_installation_location/elastix*/bin/elastix | wc -l)
+    elastix_path=$(ls "$elastix_installation_location"/elastix*/bin/elastix)
+    n_elastix_found=$(ls "$elastix_installation_location"/elastix*/bin/elastix | wc -l)
     if [ "$n_elastix_found" -eq 0 ]; then
         >&2 echo "elastix could not be found at $elastix_installation_location/elastix*/bin/elastix"
         >&2 echo "Make sure you have downloaded elastix and then edited ${SCRIPT_DIR}/run_elastix_settings to specify where you put the elastix files"
@@ -40,7 +40,7 @@ else
     elif [ "$n_elastix_found" -gt 1 ]; then
         >&2 echo "$n_elastix_found elastix executables found in $elastix_installation_location:"
         >&2 echo $elastix_path
-        elastix_path=$(ls -t $elastix_installation_location/elastix*/bin/elastix | head -n 1)
+        elastix_path=$(ls -t "$elastix_installation_location"/elastix*/bin/elastix | head -n 1)
         >&2 echo "Using the version with the most recent timestamp: $elastix_path"
     else
         >&2 echo "Using elastix found at: $elastix_path"
@@ -55,7 +55,7 @@ fi
 # (libANNlib-X.Y.so). Doing this also makes sure elastix will work on other
 # OSes even if the user hasn't set their LD_LIBRARY_PATH to point to the
 # folder containing elastix's lib folder
-elastix_path=$(realpath $elastix_path)
+elastix_path=$(realpath "$elastix_path")
 # Allow elastix to search for libANNlib-5.0 in the elastix folder and in ../lib
 export LD_LIBRARY_PATH=$(dirname "$elastix_path"):$(dirname "$(dirname "$elastix_path")")/lib
 
