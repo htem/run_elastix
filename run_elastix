@@ -501,7 +501,7 @@ func_run_Bspline() {
                 sed "${dashi[@]}" 's/(WriteResultImage "true")/(WriteResultImage "false")/' "$bspline_runparams_copy"
             fi
             if [ -n "$points" -a -n "$target_points" ]; then
-                sed "${dashi[@]}" 's/(Metric "AdvancedNormalizedCorrelation" "TransformBendingEnergyPenalty")/(Metric "AdvancedNormalizedCorrelation" "TransformBendingEnergyPenalty" "CorrespondingPointsEuclideanDistanceMetric")/' "$bspline_runparams_copy"
+                sed "${dashi[@]}" 's/" "TransformBendingEnergyPenalty")/" "TransformBendingEnergyPenalty" "CorrespondingPointsEuclideanDistanceMetric")/' "$bspline_runparams_copy"
                 sed "${dashi[@]}" 's/\/\/(Metric2Weight/(Metric2Weight/' "$bspline_runparams_copy"
                 sed "${dashi[@]}" 's/\/\/(Metric2Use/(Metric2Use/' "$bspline_runparams_copy"
                 cp "$points" "$target_points" "$this_run_output/"
