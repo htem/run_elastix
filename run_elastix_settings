@@ -10,10 +10,10 @@
 elastix_installation_location=~/software
 
 
-# What is the filename of the template you want to register images to?
+# What is the filename of the target image you want to register images to?
 # If the file is in this run_elastix folder, just provide its filename.
 # If the file is elsewhere on your computer, provide the full path.
-template=JRC2018_VNC_FEMALE_4iso.nrrd
+target=JRC2018_VNC_FEMALE_4iso.nrrd
 
 
 # How many parallel threads do you want to allow elastix to run?
