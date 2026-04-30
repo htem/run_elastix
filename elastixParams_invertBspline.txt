@@ -27,7 +27,7 @@
 (FinalGridSpacingInPhysicalUnits _GRIDSPACING_)
 (GridSpacingSchedule 8  4  2  1  1)
 
-(MaximumNumberOfIterations 1000 1000 2000 4000 6000)
+(MaximumNumberOfIterations 1000 400 400 400 3000)
 
 
 //Output
