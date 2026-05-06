@@ -9,18 +9,16 @@ Currently runs on Mac (tested on Big Sur) and Linux (tested on Ubuntu 16.04, 18.
 
 ## Usage Manual
 
-### Step 0: Prerequisites
-**A.** Download [elastix](https://elastix.lumc.nl/download.php) from its [releases page](https://github.com/SuperElastix/elastix/releases). Extract the folder from the .zip or .tar.gz file and put that folder somewhere on your computer. (Mac: Use the most recent version. Ubuntu 16.04: Use elastix-4.9.0. Ubuntu 18.04: Use elastix-5.0.0. Ubuntu 20.04: Use elastix-5.0.1. Ubuntu 22.04: Use elastix 5.1.0)
+### Step 0: Installation
+**A.** Download [elastix](https://elastix.dev/download.php) from its [releases page](https://github.com/SuperElastix/elastix/releases). Extract the folder from the .zip or .tar.gz file and put that folder somewhere on your computer. (Mac: Use the most recent version. Ubuntu 16.04: Use elastix-4.9.0. Ubuntu 18.04: Use elastix-5.0.0. Ubuntu 20.04: Use elastix-5.0.1. Ubuntu 22.04 and up: The latest elastix will probably work – confirmed working Ubuntu 22.04 + elastix 5.2.0)
 
 **B.** Open the file `run_elastix_settings` in this folder and change the line starting with `elastix_installation_location=` to be wherever you put the extracted folder from step A. (The default value is `~/software`, so consider putting your elastix folder on your computer at that location.)
 
 **C.** Add this folder to your PATH so that `run_elastix` and `invert_elastix` can be called from the command line. For example, add `export PATH=~/repos/run_elastix:$PATH` (or wherever on your computer you have your `run_elastix` files) to your `~/.bashrc` (bash on Linux) or `~/.bash_profile` (bash on Mac) or `~/.zshrc` (zsh on Mac).
 
-**D.** Download the target image you want to align to. The most recent Drosophila brain and VNC standard templates are available from [Janelia](https://www.janelia.org/open-science/jrc-2018-brain-templates).
+**D.** If you expect to be registering to a different target on each of your alignment runs, you can skip this step. If you expect to be repeatedly registering to the same target, frist download that target image you want to align to. (The most recent Drosophila brain and VNC standard templates are available from [Janelia](https://www.janelia.org/open-science/jrc-2018-brain-templates), for example.) Then open the file `run_elastix_settings` in this folder and change the line starting with `target=` to be the filename of the target you want to use. (The default value is `JRC2018_VNC_FEMALE_4iso.nrrd`, the 2018 Janelia Female VNC template.) Either put the `.nrrd` file in the same folder as `run_elastix`, or put the full path to where your `.nrrd` file is into the settings file.
 
-**E.** Open the file `run_elastix_settings` in this folder and change the line starting with `target=` to be the filename of the target you want to use. (The default value is `JRC2018_VNC_FEMALE_4iso.nrrd`, the 2018 Janelia Female VNC template.) Either put the `.nrrd` file in the same folder as `run_elastix`, or put the full path to where your `.nrrd` file is into the settings file.
-
-**F.** Edit the final line in `run_elastix_settings` to tell elastix how many of your computer's CPU threads it can use by default.
+**E.** Edit the final line in `run_elastix_settings` to tell elastix how many of your computer's CPU threads it can use by default.
 
 
 ### Step 1: Prepare input files
